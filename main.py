@@ -1,4 +1,5 @@
 import telebot
+import whisper
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_gigachat.chat_models import GigaChat
 import os
@@ -15,6 +16,7 @@ bot = telebot.TeleBot(token)
 
 questions = ''
 text = ''
+text_from_audio = ''
 
 
 model = GigaChat(
@@ -23,6 +25,7 @@ model = GigaChat(
     model='GigaChat',
     verify_ssl_certs=False
 )
+model_whisper = whisper.load_model("base")
 
 
 def pdf_to_text(pdf_path, output_txt):
@@ -60,7 +63,35 @@ def docx_to_txt(docx_path, txt_path):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Привет! 👋 Скинь лонгрид")
+    bot.reply_to(message, "Привет! 👋 Скинь лонгрид или аудио записанной лекции")
+
+
+@bot.message_handler(content_types=['audio'])
+def handle_audio(message):
+    global text
+    file_info = bot.get_file(message.audio.file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    bot.reply_to(message, 'Получил твой файл, обрабатываю!')
+
+    audio_path = "audio_file.mp3"
+    with open(audio_path, 'wb') as new_file:
+        new_file.write(downloaded_file)
+
+    print('записал файл')
+
+    # Преобразуем аудио в текст с помощью Whisper
+    result = model_whisper.transcribe(audio_path, language="ru")
+    text = result["text"]
+
+
+
+    # Отправляем текст пользователю
+    print(text)
+    os.remove(audio_path)
+
+    bot.reply_to(message, 'Отправь все вопросы, которые тебя интересуют')
+    bot.register_next_step_handler(message, handle_questions)
 
 @bot.message_handler(content_types=['document'])
 def file(message):
@@ -88,6 +119,8 @@ def file(message):
         if message.document.mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':  # docx
             print('lol')
             docx_to_txt(file_name, 'output.txt')
+
+        os.remove(file_name)
 
         with open('output.txt', 'r', encoding='utf-8') as file:
             text = file.read()
