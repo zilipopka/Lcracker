@@ -56,12 +56,17 @@ def docx_to_txt(docx_path, txt_path):
 
 bot.set_my_commands([
     types.BotCommand("start", "Запустить бота"),
-    types.BotCommand("help", "Помощь")
+    types.BotCommand("help", "Помощь"),
+    types.BotCommand("question", "Задать вопрос")
 ])
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Привет! 👋 Скинь лонгрид (pdf или docx) или аудио записанной лекции (mp3)")
+    bot.reply_to(message, "Привет! 👋 Отправь команду /question чтобы задать вопросы по интересующим тебя темам")
+
+@bot.message_handler(commands=['question'])
+def send_welcome(message):
+    bot.reply_to(message, "Скинь лонгрид (pdf или docx) или аудио записанной лекции (mp3)")
 
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
@@ -98,6 +103,8 @@ def handle_audio(message):
 @bot.message_handler(content_types=['document'])
 def file(message):
     global text
+    bot.reply_to(message,
+                 'Вижу твое сообщение! Получаю файл...')
     try:
         file_info = bot.get_file(message.document.file_id)
 
@@ -109,8 +116,7 @@ def file(message):
         with open(save_path, 'wb') as new_file:
             new_file.write(downloaded_file)
 
-        # Отправляем подтверждение пользователю
-        bot.reply_to(message, f"Файл '{file_name}' успешно сохранен!")
+        bot.reply_to(message, 'Получил твой файл! обрабатываю...')
 
         if message.document.mime_type == 'application/pdf':  # PDF
             pdf_to_text(file_name, 'output.txt')
