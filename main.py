@@ -7,6 +7,7 @@ from telebot.types import Message
 from docx import Document
 import PyPDF2
 from dotenv import load_dotenv
+from telebot import types
 
 load_dotenv()
 
@@ -59,12 +60,18 @@ def docx_to_txt(docx_path, txt_path):
 
     print('DOCX')
 
-
+bot.set_my_commands([
+    types.BotCommand("start", "Запустить бота"),
+    types.BotCommand("help", "Помощь")
+])
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Привет! 👋 Скинь лонгрид или аудио записанной лекции")
 
+@bot.message_handler(commands=['help'])
+def send_welcome(message):
+    bot.reply_to(message, "Этот бот в роли преподавателя ответит на все твои вопросы по учебному материалу. Чтобы это сделать пропиши команду /start, а затем выгрузи файл с информацией или аудиофайл записанной лекции.")
 
 @bot.message_handler(content_types=['audio'])
 def handle_audio(message):
@@ -90,7 +97,7 @@ def handle_audio(message):
     print(text)
     os.remove(audio_path)
 
-    bot.reply_to(message, 'Отправь все вопросы, которые тебя интересуют')
+    bot.reply_to(message, 'Отправь все вопросы, которые тебя интересуют или напиши что хочешь краткий пересказ материала')
     bot.register_next_step_handler(message, handle_questions)
 
 @bot.message_handler(content_types=['document'])
@@ -132,7 +139,7 @@ def file(message):
         # В случае ошибки отправляем сообщение пользователю
         bot.reply_to(message, f"Ошибка при сохранении файла: {e}")
 
-    bot.reply_to(message, 'Отправь все вопросы, которые тебя интересуют')
+    bot.reply_to(message, 'Отправь все вопросы, которые тебя интересуют или напиши что хочешь краткий пересказ материала')
 
     bot.register_next_step_handler(message, handle_questions)
 
@@ -153,6 +160,9 @@ def handle_questions(message: Message):
     print(response.content)
 
     bot.reply_to(message, response.content)
+
+    with open('output.txt', 'w', encoding='utf-8') as file:
+        file.write('')
 
 
 
