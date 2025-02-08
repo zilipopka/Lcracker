@@ -76,10 +76,11 @@ def send_welcome(message):
 @bot.message_handler(content_types=['audio'])
 def handle_audio(message):
     global text
+    bot.reply_to(message, 'Вижу твое сообщение! Получаю файл...')
     file_info = bot.get_file(message.audio.file_id)
     downloaded_file = bot.download_file(file_info.file_path)
 
-    bot.reply_to(message, 'Получил твой файл, обрабатываю!')
+    bot.reply_to(message, 'Получил твой файл! обрабатываю...')
 
     audio_path = "audio_file.mp3"
     with open(audio_path, 'wb') as new_file:
