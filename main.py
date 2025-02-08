@@ -26,6 +26,7 @@ model = GigaChat(
     model='GigaChat',
     verify_ssl_certs=False
 )
+
 model_whisper = whisper.load_model("base")
 
 
@@ -38,7 +39,6 @@ def pdf_to_text(pdf_path, output_txt):
 
         # Initialize an empty string to store the text
 
-
         for page_num in range(len(pdf_reader.pages)):
             page = pdf_reader.pages[page_num]
             text += page.extract_text()
@@ -47,18 +47,12 @@ def pdf_to_text(pdf_path, output_txt):
     with open('output.txt', 'w', encoding='utf-8') as txt_file:
         txt_file.write(text)
 
-    print('PDF')
-
-
-
 
 def docx_to_txt(docx_path, txt_path):
     doc = Document(docx_path)
     text = "\n".join([para.text for para in doc.paragraphs])
     with open(txt_path, 'w', encoding='utf-8') as f:
         f.write(text)
-
-    print('DOCX')
 
 bot.set_my_commands([
     types.BotCommand("start", "Запустить бота"),
@@ -67,7 +61,7 @@ bot.set_my_commands([
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Привет! 👋 Скинь лонгрид или аудио записанной лекции")
+    bot.reply_to(message, "Привет! 👋 Скинь лонгрид (pdf или docx) или аудио записанной лекции (mp3)")
 
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
@@ -118,14 +112,10 @@ def file(message):
         # Отправляем подтверждение пользователю
         bot.reply_to(message, f"Файл '{file_name}' успешно сохранен!")
 
-        print(message.document.mime_type)
-
         if message.document.mime_type == 'application/pdf':  # PDF
-            print('im here')
             pdf_to_text(file_name, 'output.txt')
 
         if message.document.mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':  # docx
-            print('lol')
             docx_to_txt(file_name, 'output.txt')
 
         os.remove(file_name)
