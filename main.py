@@ -8,6 +8,7 @@ from docx import Document
 import PyPDF2
 from dotenv import load_dotenv
 from telebot import types
+import matplotlib.pyplot as plt
 
 load_dotenv()
 
@@ -111,7 +112,7 @@ def file(message):
         downloaded_file = bot.download_file(file_info.file_path)
 
         file_name = message.document.file_name
-        save_path = os.path.join('C:/mine/programming/CU/IT-holidays/Lcracker', file_name)
+        save_path = os.path.join('C:\\Users\\User\\.cursor\\LCracker\\data', file_name)
 
         with open(save_path, 'wb') as new_file:
             new_file.write(downloaded_file)
@@ -146,17 +147,47 @@ def handle_questions(message: Message):
     questions = message.text
     bot.send_message(message.chat.id, f'Твои вопросы: {questions}. Сейчас подумаю над ответами...')
 
-    # Формируем запрос
-    task = f"Сейчас я пришлю тебе текст. Ответь на вопросы, которые я тебе задам. Пользуйся информацией только из данного текста, больше никакую информацию использовать нельзя. \n {text} \n Ответь на мои вопросы: {questions}"
+    # Формируем запрос к GigaChat
+    task = f"""Сейчас я пришлю тебе текст. Ответь на вопросы, которые я тебе задам. 
+    ВАЖНО: Верни ТОЛЬКО формулы в формате LaTeX, каждую с новой строки, начиная со слова FORMULA:
+    Например:
+    FORMULA: B(x,y) = x_1y_1 + x_2y_2
+    FORMULA: Q(x) = x^T A x
+    
+    Пользуйся информацией только из данного текста, больше никакую информацию использовать нельзя. 
+    \n {text} \n Ответь на мои вопросы: {questions}"""
+    
     messages = [HumanMessage(content=task)]
-
-    print("я сформировал request")
-
-    # Отправляем запрос и дожидаемся ответа
     response = model.invoke(messages)
-    print(response.content)
-
-    bot.reply_to(message, response.content)
+    
+    # Разбиваем ответ на строки и ищем формулы
+    lines = response.content.split('\n')
+    formula_found = False  # Флаг для проверки, были ли найдены формулы
+    
+    for line in lines:
+        if line.startswith('FORMULA:'):
+            formula_found = True
+            formula = line.replace('FORMULA:', '').strip()
+            try:
+                # Создаем изображение формулы
+                plt.figure(facecolor='black')
+                plt.text(0.5, 0.5, f'${formula}$', color='white', fontsize=50, ha='center', va='center')
+                plt.axis('off')
+                plt.savefig('formula.png', bbox_inches='tight', pad_inches=0.1, facecolor='black')
+                
+                # Отправляем изображение
+                with open('formula.png', 'rb') as photo:
+                    bot.send_photo(chat_id=message.chat.id, photo=photo)
+                
+                # Удаляем временный файл
+                os.remove('formula.png')
+            except Exception as e:
+                bot.reply_to(message, f"Не удалось создать изображение формулы: {str(e)}")
+            finally:
+                plt.close()
+    
+    if not formula_found:
+        bot.reply_to(message, "Извините, не удалось найти формулы в тексте")
 
     with open('output.txt', 'w', encoding='utf-8') as file:
         file.write('')
@@ -164,4 +195,3 @@ def handle_questions(message: Message):
 
 
 bot.infinity_polling()
-
