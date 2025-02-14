@@ -146,51 +146,64 @@ def handle_questions(message: Message):
     global questions
     questions = message.text
     bot.send_message(message.chat.id, f'Твои вопросы: {questions}. Сейчас подумаю над ответами...')
-
-    # Формируем запрос к GigaChat
+    
     task = f"""Сейчас я пришлю тебе текст. Ответь на вопросы, которые я тебе задам. 
     ВАЖНО: Верни ТОЛЬКО формулы в формате LaTeX, каждую с новой строки, начиная со слова FORMULA:
-    Например:
-    FORMULA: B(x,y) = x_1y_1 + x_2y_2
-    FORMULA: Q(x) = x^T A x
-    
     Пользуйся информацией только из данного текста, больше никакую информацию использовать нельзя. 
     \n {text} \n Ответь на мои вопросы: {questions}"""
     
     messages = [HumanMessage(content=task)]
     response = model.invoke(messages)
     
-    # Разбиваем ответ на строки и ищем формулы
-    lines = response.content.split('\n')
-    formula_found = False  # Флаг для проверки, были ли найдены формулы
+    print(f"Ответ от GigaChat: {response.content}")
     
-    for line in lines:
-        if line.startswith('FORMULA:'):
+    lines = response.content.split('\n')
+    formula_found = False
+    current_description = ""
+    
+    for i, line in enumerate(lines):
+        clean_line = line.strip()
+        
+        if clean_line.startswith('FORMULA:'):
             formula_found = True
-            formula = line.replace('FORMULA:', '').strip()
-            try:
-                # Создаем изображение формулы
-                plt.figure(facecolor='black')
-                plt.text(0.5, 0.5, f'${formula}$', color='white', fontsize=50, ha='center', va='center')
-                plt.axis('off')
-                plt.savefig('formula.png', bbox_inches='tight', pad_inches=0.1, facecolor='black')
+            formula_lines = []
+            j = i + 1
+            while j < len(lines) and not lines[j].strip().startswith('FORMULA:'):
+                if lines[j].strip():
+                    formula_lines.append(lines[j].strip())
+                j += 1
+            
+            formula = ' '.join(formula_lines).strip('$')
+            
+            if formula:  # Проверка на пустую формулу
+                if j < len(lines) and not lines[j].strip().startswith('FORMULA:'):
+                    current_description = lines[j].strip()
                 
-                # Отправляем изображение
-                with open('formula.png', 'rb') as photo:
-                    bot.send_photo(chat_id=message.chat.id, photo=photo)
-                
-                # Удаляем временный файл
-                os.remove('formula.png')
-            except Exception as e:
-                bot.reply_to(message, f"Не удалось создать изображение формулы: {str(e)}")
-            finally:
-                plt.close()
+                try:
+                    if current_description:
+                        bot.send_message(message.chat.id, current_description)
+                    
+                    plt.figure(facecolor='black')
+                    plt.text(0.5, 0.5, f'${formula}$', color='white', fontsize=50, ha='center', va='center')
+                    plt.axis('off')
+                    plt.savefig('formula.png', bbox_inches='tight', pad_inches=0.1, facecolor='black')
+                    
+                    with open('formula.png', 'rb') as photo:
+                        bot.send_photo(chat_id=message.chat.id, photo=photo)
+                    
+                    os.remove('formula.png')
+                except Exception as e:
+                    bot.reply_to(message, f"Не удалось создать изображение формулы: {str(e)}")
+                finally:
+                    plt.close()
+            
+            current_description = ""
     
     if not formula_found:
         bot.reply_to(message, "Извините, не удалось найти формулы в тексте")
-
-    with open('output.txt', 'w', encoding='utf-8') as file:
-        file.write('')
+    
+    bot.send_message(message.chat.id, "Можете задать еще вопросы по этому материалу")
+    bot.register_next_step_handler(message, handle_questions)
 
 
 
